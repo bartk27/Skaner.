@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Skaner plomb</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+
+body{
+background:#111;
+color:white;
+font-family:Arial;
+padding:10px;
+}
+
+h1{
+text-align:center;
+}
+
+.panel{
+background:#222;
+padding:12px;
+border-radius:10px;
+margin-bottom:10px;
+}
+
+input,button{
+width:100%;
+padding:15px;
+margin-top:8px;
+font-size:18px;
+border-radius:8px;
+border:0;
+}
+
+button{
+background:#1976d2;
+color:white;
+}
+
+.red{
+background:#c62828;
+}
+
+.green{
+background:#2e7d32;
+}
+
+#reader{
+width:100%;
+}
+
+.licznik{
+font-size:22px;
+margin:8px;
+}
+
+.scan{
+border-bottom:1px solid #555;
+padding:8px;
+}
+
+.good{
+color:#4caf50;
+}
+
+.bad{
+color:#ff5252;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<h1>📷 SKANER PLOMB</h1>
+
+
+<div class="panel">
+
+<input id="auto"
+placeholder="Numer rejestracyjny">
+
+
+<input id="operator"
+placeholder="Operator">
+
+</div>
+
+
+
+<div class="panel">
+
+<div id="reader"></div>
+
+<p id="status">
+Uruchamianie kamery...
+</p>
+
+</div>
+
+
+
+<div class="panel">
+
+
+<div class="licznik">
+01:
+<span id="c01">0</span>
+</div>
+
+
+<div class="licznik">
+05:
+<span id="c05">0</span>
+</div>
+
+
+<div class="licznik">
+Razem:
+<span id="all">0</span>
+</div>
+
+
+</div>
+
+
+
+<div class="panel">
+
+<button onclick="usun()">
+Usuń ostatni skan
+</button>
+
+
+<button class="red" onclick="resetuj()">
+Wyzeruj
+</button>
+
+
+<button class="green" onclick="raport()">
+Zapisz raport
+</button>
+
+
+</div>
+
+
+
+<div class="panel">
+
+<h3>Skanowane plomby</h3>
+
+<div id="lista"></div>
+
+</div>
+
+
+
+
+<script>
+
+
+let kody=[];
+
+let camera=null;
+
+
+
+function startCamera(){
+
+
+Html5Qrcode.getCameras()
+
+.then(cameras=>{
+
+
+if(cameras.length===0){
+
+status.innerHTML=
+"Nie znaleziono aparatu";
+
+return;
+
+}
+
+
+
+camera=
+new Html5Qrcode("reader");
+
+
+
+camera.start(
+
+cameras[cameras.length-1].id,
+
+{
+
+fps:15,
+
+qrbox:{
+width:300,
+height:200
+},
+
+aspectRatio:1.777
+
+},
+
+
+kod=>{
+
+dodaj(kod);
+
+},
+
+
+()=>{}
+
+)
+
+.then(()=>{
+
+status.innerHTML=
+"Kamera aktywna";
+
+})
+
+.catch(e=>{
+
+status.innerHTML=
+"Błąd kamery: "+e;
+
+});
+
+
+})
+
+.catch(e=>{
+
+status.innerHTML=
+"Brak zgody na aparat";
+
+});
+
+
+}
+
+
+
+
+function dodaj(kod){
+
+
+let info=status;
+
+
+
+if(
+!kod.startsWith("01")
+&&
+!kod.startsWith("05")
+){
+
+
+info.innerHTML=
+"❌ Zły kod";
+
+info.className="bad";
+
+return;
+
+}
+
+
+
+
+if(
+kody.includes(kod)
+){
+
+
+info.innerHTML=
+"⚠️ Plomba już zeskanowana";
+
+info.className="bad";
+
+navigator.vibrate?.(300);
+
+return;
+
+}
+
+
+
+
+kody.push(kod);
+
+
+info.innerHTML=
+"✅ Dodano "+kod;
+
+
+info.className="good";
+
+
+navigator.vibrate?.(100);
+
+
+odswiez();
+
+
+}
+
+
+
+
+
+
+function odswiez(){
+
+
+c01.innerHTML=
+kody.filter(
+x=>x.startsWith("01")
+).length;
+
+
+
+c05.innerHTML=
+kody.filter(
+x=>x.startsWith("05")
+).length;
+
+
+
+all.innerHTML=
+kody.length;
+
+
+
+lista.innerHTML=
+kody.map(
+(x,i)=>
+`
+<div class="scan">
+${i+1}. ${x}
+</div>
+`
+).join("");
+
+
+
+}
+
+
+
+
+function usun(){
+
+kody.pop();
+
+odswiez();
+
+}
+
+
+
+function resetuj(){
+
+
+if(confirm(
+"Usunąć wszystkie skany?"
+)){
+
+
+kody=[];
+
+odswiez();
+
+
+}
+
+}
+
+
+
+
+function raport(){
+
+
+let txt=
+"Nr;Plomba\n";
+
+
+kody.forEach(
+(x,i)=>{
+
+txt+=
+`${i+1};${x}\n`;
+
+});
+
+
+let file=
+new Blob(
+["\ufeff"+txt],
+{
+type:"text/csv"
+}
+);
+
+
+
+let a=document.createElement("a");
+
+a.href=
+URL.createObjectURL(file);
+
+a.download=
+"raport_plomb.csv";
+
+a.click();
+
+
+}
+
+
+
+
+window.onload=function(){
+
+startCamera();
+
+};
+
+
+
+</script>
+
+
+</body>
+</html>
